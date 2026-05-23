@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>GymAI Persona</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+</head>
+<body class="bg-slate-900 text-white font-sans">
+    <div class="max-w-md mx-auto p-6">
+        <header class="text-center py-8">
+            <h1 class="text-3xl font-bold text-blue-500">GymAI <span class="text-white">Persona</span></h1>
+        </header>
+
+        <div class="space-y-4 bg-slate-800 p-6 rounded-3xl shadow-2xl border border-slate-700">
+            <div>
+                <label class="text-xs text-slate-400 uppercase font-bold">Kondisi Kamu</label>
+                <input id="mood" type="text" placeholder="Contoh: Pegal leher, kurang tidur" class="w-full bg-slate-700 p-3 rounded-xl mt-1 outline-none focus:ring-2 focus:ring-blue-500">
+            </div>
+
+            <div>
+                <label class="text-xs text-slate-400 uppercase font-bold">Target Latihan</label>
+                <textarea id="prompt" rows="3" placeholder="Contoh: Latihan bakar lemak 10 menit tanpa alat" class="w-full bg-slate-700 p-3 rounded-xl mt-1 outline-none focus:ring-2 focus:ring-blue-500"></textarea>
+            </div>
+
+            <div class="flex gap-2">
+                <button onclick="setType('adult')" id="btn-adult" class="flex-1 py-2 rounded-lg bg-blue-600 font-bold">Adult</button>
+                <button onclick="setType('teen')" id="btn-teen" class="flex-1 py-2 rounded-lg bg-slate-700 font-bold">Teen (RPG)</button>
+            </div>
+
+            <button onclick="generate()" id="main-btn" class="w-full py-4 bg-gradient-to-r from-blue-600 to-indigo-600 rounded-xl font-bold text-lg shadow-lg hover:scale-105 transition">MULAI QUEST LATIHAN</button>
+        </div>
+
+        <!-- Result Box -->
+        <div id="result-box" class="hidden mt-6 bg-slate-800 p-6 rounded-3xl border border-blue-500/30">
+            <div class="flex justify-between items-center mb-4">
+                <span id="badge" class="px-3 py-1 bg-blue-500 text-xs rounded-full uppercase font-bold">Adult Mode</span>
+                <button onclick="speak()" class="text-blue-400 text-2xl hover:scale-110"><i class="fas fa-volume-up"></i></button>
+            </div>
+            <div id="ai-content" class="text-slate-300 whitespace-pre-wrap text-sm leading-relaxed"></div>
+        </div>
+    </div>
+
+    <script>
+        let currentType = 'adult';
+        let lastAudioScript = "";
+
+        function setType(type) {
+            currentType = type;
+            document.getElementById('btn-adult').className = type === 'adult' ? 'flex-1 py-2 rounded-lg bg-blue-600 font-bold' : 'flex-1 py-2 rounded-lg bg-slate-700 font-bold';
+            document.getElementById('btn-teen').className = type === 'teen' ? 'flex-1 py-2 rounded-lg bg-purple-600 font-bold' : 'flex-1 py-2 rounded-lg bg-slate-700 font-bold';
+        }
+
+        async function generate() {
+            const btn = document.getElementById('main-btn');
+            btn.innerText = "SABAR, AI SEDANG MENYUSUN...";
+            btn.disabled = true;
+
+            const res = await fetch('/api/v1/workout/generate', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({
+                    prompt: document.getElementById('prompt').value,
+                    user_type: currentType,
+                    mood: document.getElementById('mood').value
+                })
+            });
+
+            const data = await res.json();
+            
+            document.getElementById('result-box').classList.remove('hidden');
+            document.getElementById('ai-content').innerText = data.ai_content;
+            document.getElementById('badge').innerText = data.is_rpg_mode ? "RPG Mode: ACTIVE" : "Adult Mode: ACTIVE";
+            lastAudioScript = data.audio_script;
+
+            btn.innerText = "MULAI QUEST LATIHAN";
+            btn.disabled = false;
+            
+            // Auto speak on finish
+            speak();
+        }
+
+        function speak() {
+            if (!lastAudioScript) return;
+            const msg = new SpeechSynthesisUtterance(lastAudioScript);
+            msg.lang = 'id-ID';
+            window.speechSynthesis.speak(msg);
+        }
+    </script>
+</body>
+</html>
